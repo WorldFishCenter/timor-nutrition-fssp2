@@ -1,0 +1,190 @@
+---
+title: "Validation exploration"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width = 10, fig.height = 7, 
+                      warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(rnaturalearth)
+library(ggrepel)
+
+drake::loadd(submissions_table)
+drake::loadd(survey_metadata)
+```
+
+The purpose of this document is to monitor the quality of the data collected. 
+To explore the submissions data and metadata to assert 
+
+```{r}
+dates <- c(submissions_table$`A_interviewer_details/date_of_interview`, 
+                 lubridate::as_date(submissions_table$`_submission_time`)) 
+date_limits <- c(min(dates)-1, max(dates + 1))
+```
+
+
+## Survey numbers
+
+```{r n-surveys, fig.height = 10}
+submissions_table %>%
+  count(`A_interviewer_details/date_of_interview`,
+        `A_interviewer_details/interviewers_name`,
+        `A_interviewer_details/village`,
+        `A_interviewer_details/district`) %>%
+  mutate(`A_interviewer_details/interviewers_name` =
+           fct_reorder(
+             .f = `A_interviewer_details/interviewers_name`,
+             .x = n, .fun = sum)) %>% 
+  ggplot(aes(x = `A_interviewer_details/date_of_interview`,
+             y = n,
+             fill = as.character(`A_interviewer_details/district`))) +
+  geom_col() +
+  scale_x_date(date_breaks = "1 day", minor_breaks = NULL, 
+               limits = date_limits) +
+  scale_y_continuous(breaks = seq(0, 100, by = 2)) +
+  scale_fill_discrete(labels = lookup_district_eng) +
+  facet_grid(rows = vars(`A_interviewer_details/interviewers_name`)) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 90), 
+        axis.title = element_blank(), 
+        legend.title = element_blank()) +
+  labs(fill = "District",
+       y = "Number of surveys",
+       x = "Date of interview", 
+       title = "Number of surveys performed over time")
+```
+
+## Survey submissions
+
+```{r submission-delay, fig.height =  5}
+submissions_delays <- submissions_table %>%
+  select(`A_interviewer_details/date_of_interview`, 
+         `_submission_time`, 
+         `_id`) %>%
+  mutate(`_submission_time` = lubridate::as_date(`_submission_time`), 
+         submission_interval =
+           lubridate::interval(`_submission_time`,
+                               `A_interviewer_details/date_of_interview`), 
+         submission_delay = lubridate::as.duration(submission_interval), 
+         submission_delay = as.numeric(submission_delay, "days"), ) 
+
+submissions_delays %>% 
+  mutate(submission_delay_grouped = cut(
+    x = submission_delay, 
+    breaks = c(-100, -5, -3, -1,0, 100), 
+    labels = rev(c("interview in the future", 
+                   "0 days", "1-2 days", "3-4 days", "5 days or more")), 
+    ordered_result = T)) %>% 
+  count(`_submission_time`, submission_delay_grouped) %>%
+  ggplot(aes(x = `_submission_time`, y = n, fill = submission_delay_grouped)) +
+  geom_col(width = 1) +
+  scale_x_date(date_breaks = "1 day", minor_breaks = NULL, 
+               limits = date_limits) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 90), 
+        axis.title = element_blank())  +
+  labs(fill = "Submission delay",
+       title = "Number of surveys performed over time")
+```
+
+## Geolocation
+
+```{r gis-timor-submissions, fig.height = 5.5}
+submission_location <- submissions_table %>%
+  separate(col = `A_interviewer_details/HH_GPS`, 
+           into = c("geo_lat", "geo_lng", "geo_alt", "geo_pres"), 
+           sep = " ") %>%
+  group_by(`A_interviewer_details/village`) %>%
+  mutate(across(starts_with("geo"), as.numeric)) %>%
+  mutate(avg_lat = median(geo_lat), avg_lng = median(geo_lng)) %>%
+  mutate(distance_to_village_centroid = geodist::geodist_vec(geo_lng, geo_lat, avg_lng, avg_lat, 
+                                                             paired = T, measure = "haversine")) %>%
+    mutate(distance_to_village_centroid_grouped = cut(
+    x = distance_to_village_centroid, 
+    breaks = c(0, 1000, 2000, 5000, 10000, 100000), 
+    labels = c("0-1km", "1-2km", "2-5km", "5-10km", ">10km"), 
+    ordered_result = TRUE)) 
+
+village_labels <- submission_location %>%
+  summarise(across(starts_with("avg_"), first)) %>%
+  mutate(village_label = lookup_village_eng(`A_interviewer_details/village`))
+
+submission_location %>%
+  ggplot(aes(x = geo_lng, y = geo_lat, 
+             colour = distance_to_village_centroid_grouped)) +
+  geom_sf(data = ne_countries(country = "East Timor", 
+                              scale = 10,
+                              returnclass = "sf"), 
+          inherit.aes = FALSE) +
+  geom_point(size = 0.5) +
+  geom_segment(data = filter(submission_location, distance_to_village_centroid > 5000), 
+               aes(xend = avg_lng, yend = avg_lat)) +
+  geom_label_repel(data = village_labels, 
+                  aes(x = avg_lng, y = avg_lat, label = village_label), 
+                  segment.size = 0.2,
+                  segment.linetype = 2,
+                  box.padding = 2, 
+                  inherit.aes = F) +
+  theme_minimal() +
+  theme(legend.position = "bottom", 
+        axis.title = element_blank()) +
+  labs(title = "Geolocatrion of survey submissions", 
+       colour = "Distance to village centroid [m]")
+```
+
+```{r gis-village-submission, eval = F}
+submission_location %>%
+    mutate(distance_to_village_centroid_grouped = cut(
+    x = distance_to_village_centroid, 
+    breaks = c(0, 1000, 2000, 5000, 10000, 100000), 
+    labels = c("0-1km", "1-2km", "2-5km", "5-10km", ">10km"), 
+    ordered_result = TRUE)) %>%
+  mutate(`A_interviewer_details/village` = lookup_village_eng(`A_interviewer_details/village`)) %>%
+  ggplot(aes(x = geo_lng, y = geo_lat, 
+                   colour = distance_to_village_centroid_grouped)) +
+  geom_segment(aes(xend = avg_lng, yend = avg_lat)) +
+  geom_point(size = 1) +
+  facet_wrap(facets = vars(`A_interviewer_details/village`), scales = "free") +
+  coord_quickmap() +
+  theme_minimal() +
+  theme(legend.position = "bottom", 
+        legend.title = element_blank(), 
+        axis.title = element_blank()) 
+```
+
+```{r distance-to-centroid}
+submission_location %>%
+  mutate(submission_id_label = if_else(distance_to_village_centroid > 5000, as.character(`_id`), "")) %>%
+  ggplot(aes(x = `A_interviewer_details/date_of_interview`, 
+             y = distance_to_village_centroid, 
+             colour = as.character(`A_interviewer_details/village`))) +
+  geom_point(aes(group = `A_interviewer_details/date_of_interview`), 
+             position = position_identity(), 
+             size = 1) +
+  geom_hline(yintercept = 5000, linetype = 2, size = 0.5) +
+  geom_text_repel(aes(label = submission_id_label), colour = "black", 
+                  force_pull   = 0, # do not pull toward data points
+                  angle        = 90,
+                  hjust        = 0.25,
+                  vjust = 1,
+                  segment.size = 0.2,
+                  size = 3.5,
+                  max.iter = 1e4, max.time = 1) +
+  scale_y_log10(limits = c(10, 100000)) +
+  scale_x_date(date_breaks = "1 day", minor_breaks = NULL, 
+               limits = date_limits) +
+  scale_colour_discrete(labels = lookup_village_eng) +
+  theme_minimal() +
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(angle = 90), 
+        axis.title.x = element_blank()) +
+  labs(colour = "Village", 
+       y = "Distance to village centroid [m]", 
+       title = "Potentially problematic geolocations", 
+       caption = "Submissions geolocated more than 5km to village centroid are highlighted")
+```
+
