@@ -1,0 +1,6 @@
+name: Update-analyses
+
+on:
+  push:
+    branches:
+      - master
