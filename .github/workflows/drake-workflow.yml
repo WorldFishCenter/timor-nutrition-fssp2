@@ -1,0 +1,22 @@
+name: Update analyses
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+
+  build-container:
+    name: Run workflow
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Build docker image
+        run: docker build . --file Dockerfile --tag rstudio_image
+      - name: Run Drake workflow
+        run: docker run -v $(pwd):/home -w /home --name rstudio_container rstudio_image Rscript main.R
