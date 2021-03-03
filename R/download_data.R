@@ -2,14 +2,9 @@ get_survey_metadata <- function(id = NULL, token = NULL, api = "kobohr"){
 
   stopifnot(length(token) > 0)
 
-  cat(token)
-  cat(id)
-
   assets_v1_raw <- httr::GET(
     url = paste(kobo_host(api, version = "v1"), "data", sep = "/"),
     config = httr::add_headers(Authorization = token))
-
-  message(assets_v1_raw)
 
   survey_basic_metadata <- purrr::keep(httr::content(assets_v1_raw),
                                        ~.$id == id)[[1]]
