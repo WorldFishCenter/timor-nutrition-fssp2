@@ -1,5 +1,5 @@
 default:
   survey_id: 605473
-  token: !expr readLines(Sys.getenv('KOBO_TOKEN_FILE'))
+  token: !expr Sys.getenv('KOBO_TOKEN')
   csv_path: data/raw/survey_data.csv
   json_path: data/raw/survey_data.json
