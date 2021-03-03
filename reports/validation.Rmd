@@ -54,7 +54,7 @@ submissions_table %>%
   labs(fill = "District",
        y = "Number of surveys",
        x = "Date of interview", 
-       title = "Number of surveys performed over time")
+       title = "Number of surveys")
 ```
 
 ## Survey submissions
@@ -88,7 +88,7 @@ submissions_delays %>%
         axis.text.x = element_text(angle = 90), 
         axis.title = element_blank())  +
   labs(fill = "Submission delay",
-       title = "Number of surveys performed over time")
+       title = "Number of submissions")
 ```
 
 ## Geolocation
