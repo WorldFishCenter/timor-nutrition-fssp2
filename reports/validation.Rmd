@@ -3,6 +3,9 @@ title: "Validation exploration"
 output: github_document
 ---
 
+*Author*: Fernando Cagua
+*Last updated*: `r Sys.Date()`
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, fig.width = 10, fig.height = 7, 
                       warning = FALSE, message = FALSE)
