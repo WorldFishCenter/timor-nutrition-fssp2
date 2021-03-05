@@ -8,6 +8,7 @@ f <- lapply(list.files(path = here::here("R"), full.names = TRUE,
                        include.dirs = TRUE, pattern = "*.R"), source)
 
 pars <- config::get()
+print(pars)
 
 # Plan analysis ------------------------------------------------------------
 
