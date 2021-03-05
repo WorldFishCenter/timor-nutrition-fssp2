@@ -46,7 +46,7 @@ data_ingestion <- drake_plan(
     format = "file"),
 
   # Load data into memory
-  submissions_table = readr::read_csv(file = csv_path),
+  submissions_table = readr::read_csv(file = csv_path, col_types = readr::cols()),
   submissions_list = jsonlite::read_json(path = json_path),
 )
 
