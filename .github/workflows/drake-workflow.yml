@@ -38,5 +38,5 @@ jobs:
       - name: Commit changes to md report documents
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          file_pattern: reports/*.md
+          file_pattern: reports/*.md reports/*_files/*
 
