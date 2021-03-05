@@ -9,8 +9,6 @@ f <- lapply(list.files(path = here::here("R"), full.names = TRUE,
 
 pars <- config::get()
 
-print(pars)
-
 # Plan analysis ------------------------------------------------------------
 
 data_ingestion <- drake_plan(
