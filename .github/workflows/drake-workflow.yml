@@ -31,7 +31,7 @@ jobs:
           image_name: custom_rstudio
 
       - name: Run Drake workflow
-        run: docker run -v $(pwd):/home -w /home --name rstudio_container ${{ steps.build_docker.outputs.FULL_IMAGE_NAME }} Rscript main.R
+        run: docker run -v $(pwd):/home -w /home --env-file <( env| cut -f1 -d= ) --name rstudio_container ${{ steps.build_docker.outputs.FULL_IMAGE_NAME }} Rscript main.R
         env:
           KOBO_TOKEN: ${{ secrets.KOBO_TOKEN }}
 
