@@ -2,7 +2,7 @@ Validation exploration
 ================
 
 -   **Author**: Fernando Cagua
--   **Last updated**: 2021-07-18
+-   **Last updated**: 2021-07-19
 
 The purpose of this document is to monitor the quality of the data
 collected. To explore the submissions data and metadata to assert
